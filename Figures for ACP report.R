@@ -2,103 +2,534 @@
 library(dplyr)
 library(scales)
 library(ggplot2)
+library(viridis)
 library(Polychrome)
 library(data.table)
 library(RColorBrewer)
 #### End #### 
 
-#### Community college enrollment #### 
-hd <- fread("hd2021.csv", header=TRUE, select=c(
-  "UNITID", 
-  "INSTNM", 
-  "STABBR",
-  "CONTROL", 
-  "C21BASIC"
-)) %>% filter(`C21BASIC` %in% (1:14) | `UNITID` %in% c(248925, # This is for TCAT
-                                                       219596,
-                                                       219921,
-                                                       221591,
-                                                       221430,
-                                                       219994,
-                                                       220127,
-                                                       220251,
-                                                       220279,
-                                                       220321,
-                                                       220394,
-                                                       221616,
-                                                       221625,
-                                                       220640,
-                                                       220756,
-                                                       221607,
-                                                       220853,
-                                                       221050,
-                                                       221102,
-                                                       221236,
-                                                       221582,
-                                                       221281,
-                                                       221333,
-                                                       221388,
-                                                       221494,
-                                                       221634))
+runEnrollment <- function(year1, level1, hideLevel){
+  
+  hd.file <- paste("hd", year1, ".csv", sep="")
+  effy.file <- paste("effy", year1, ".csv", sep="")
+  
+  if(year1=="2018"){effy.file <- "effy2018_rv.csv"}
+  if(year1=="2019"){effy.file <- "effy2019_rv.csv"}
+  
+  if(year1=="2021"){
+    hd <- fread(hd.file, header=TRUE, select=c(
+      "UNITID", 
+      "INSTNM", 
+      "STABBR",
+      "CONTROL", 
+      "C21BASIC"
+    )) %>% filter(`CONTROL`==1)
+  }else{
+    hd <- fread(hd.file, header=TRUE, select=c(
+      "UNITID", 
+      "INSTNM", 
+      "STABBR",
+      "CONTROL", 
+      "C18BASIC"
+    )) %>% filter(`CONTROL`==1) %>% rename(C21BASIC = C18BASIC)
+  }
+  
+  hd$STABBR[hd$UNITID==105297] <- "NM" # Adjustment for Dine College
+  
+  if(year1 %in% c("2021", "2020")){
+    effy <- fread(effy.file, header=TRUE, select=c(
+      "UNITID",
+      "EFFYALEV", 
+      "EFYTOTLT"
+    )) %>% filter(EFFYALEV==level1) 
+  }else{
+    effy <- fread(effy.file, header=TRUE, select=c(
+      "UNITID",
+      "EFFYLEV", 
+      "EFYTOTLT"
+    )) %>% filter(EFFYLEV==level1) %>% rename(EFFYALEV = EFFYLEV)
+  }
+  
+  if(hideLevel==TRUE){effy <- effy %>% select(`UNITID`, `EFYTOTLT`)}
+  
+  data1 <- left_join(x=hd, y=effy, by="UNITID")
 
-effy <- fread("effy2021.csv", header=TRUE, select=c(
-  "UNITID",
-  "EFFYALEV", 
-  "EFYTOTLT"
-)) %>% filter(EFFYALEV==3) # All students, Undergraduate, Degree/certificate-seeking total
+  Arkansas <- data1 %>% filter(`STABBR`=="AR") %>% filter(`C21BASIC` %in% (1:14))
 
-data1 <- left_join(x=hd, y=effy, by="UNITID")
-enrollmentSums <- aggregate(data=data1, EFYTOTLT ~ STABBR, FUN=sum)
-names(enrollmentSums) <- c("State", "Total community college enrollment")
+  California <- data1 %>% filter(`STABBR`=="CA") %>% filter(`C21BASIC` %in% (1:14))
+
+  Hawaii <- data1 %>% filter(`STABBR`=="HI") %>% filter(`C21BASIC` %in% (1:14))
+
+  Kentucky <- data1 %>% filter(`STABBR`=="KY") %>% filter(`C21BASIC` %in% (1:14))
+
+  Maryland <- data1 %>% filter(`STABBR`=="MD") %>% filter(`C21BASIC` %in% (1:14))
+
+  Michigan <- data1 %>% filter(`STABBR`=="MI") %>% filter(`C21BASIC` %in% (1:14))
+
+  Missouri <- data1 %>% filter(`STABBR`=="MO") %>% filter(`C21BASIC` %in% (1:14))
+
+  Nevada <- data1 %>% filter(`STABBR`=="NV") %>% filter((`C21BASIC` %in% (1:14)) | (`UNITID`==182306))
+
+  NewJersey <- data1 %>% filter(`STABBR`=="NJ") %>% filter(`C21BASIC` %in% (1:14))
+
+  NewMexico <- data1 %>% filter((`STABBR`=="NM") | (`UNITID`==105297)) %>% filter(`C21BASIC` %in% (1:14) | (`UNITID` %in% c(
+    105297, # Dine College
+    187596  # Navajo Technical University
+  )))
+
+  Oklahoma <- data1 %>% filter(`STABBR`=="OK") %>% filter(`C21BASIC` %in% (1:14))
+
+  Oregon <- data1 %>% filter(`STABBR`=="OR") %>% filter(`C21BASIC` %in% (1:14))
+
+  RhodeIsland <- data1 %>% filter(`STABBR`=="RI") %>% filter(`C21BASIC` %in% (1:14))
+
+  Tennessee <- data1 %>% filter(`STABBR`=="TN") %>% filter(`C21BASIC` %in% (1:14))
+
+  Washington <- data1 %>% filter(`STABBR`=="WA") %>% filter(`C21BASIC` %in% (1:14))
+
+  WestVirginia <- data1 %>% filter(`STABBR`=="WV") %>% filter(`C21BASIC` %in% (1:14) | (`UNITID`==237686)) %>% filter(`UNITID` != 430795)
+
+  data1 <- rbind(Arkansas, California, Hawaii, Kentucky, Maryland, Michigan, Missouri, Nevada, NewJersey, NewMexico, Oklahoma, Oregon, RhodeIsland, Tennessee, Washington, WestVirginia)
+  
+  data1$Year <- rep(year1, nrow(data1))
+  
+  return(data1) 
+}
+
+#### Run enrollment numbers #### 
+
+enrollment <- rbind(runEnrollment("2018", 2, TRUE), runEnrollment("2019", 2, TRUE), runEnrollment("2020", 3, TRUE), runEnrollment("2021", 3, TRUE))
+enrollment <- aggregate(data=enrollment, EFYTOTLT ~ STABBR + Year, FUN=sum)
+
+dcs2021 <- runEnrollment("2021", 3, FALSE)
+ovr2021 <- runEnrollment("2021", 2, FALSE)
+
+dcs2020 <- runEnrollment("2020", 3, FALSE)
+ovr2020 <- runEnrollment("2020", 2, FALSE)
+
+dcs <- rbind(dcs2021, dcs2020)
+ovr <- rbind(ovr2021, ovr2020)
+
+dcs.ovr <- aggregate(data=rbind(dcs, ovr), EFYTOTLT ~ STABBR + EFFYALEV, FUN=sum) 
+dcs.ovr <- dcs.ovr %>% pivot_wider(names_from=EFFYALEV, values_from=EFYTOTLT)
+dcs.ovr <- dcs.ovr %>% mutate(`DCS Share` = `3` / `2`)
+dcs.ovr.shares <- dcs.ovr %>% select(`STABBR`, `DCS Share`)
+
+enrollment <- left_join(x=enrollment, y=dcs.ovr.shares, by="STABBR")
+enrollment <- enrollment %>% mutate(`EFYTOTLT.adj` = ifelse(`Year` %in% c("2018", "2019"), `EFYTOTLT` * `DCS Share`, `EFYTOTLT`))
+
+enrollment <- enrollment %>% select(`STABBR`, `Year`, `EFYTOTLT.adj`) %>% pivot_wider(names_from=`Year`, values_from=`EFYTOTLT.adj`)
+
+enrollment$`2018` <- round(enrollment$`2018`, 0)
+enrollment$`2019` <- round(enrollment$`2019`, 0)
+enrollment$`2020` <- round(enrollment$`2020`, 0)
+enrollment$`2021` <- round(enrollment$`2021`, 0)
+
 #### End #### 
 
-#### Promise program participation #### 
-PP <- data.frame("State"=c("CA"), "Program"=c("California College Promise Grant"), "Participants"=c(800122), "Dollars"=c(654267518)) # https://datamart.cccco.edu/Services/FinAid_Summary.aspx
-PP <- PP %>% add_row(`State`="WA", `Program`="Washington College Grant", `Participants`=48294, `Dollars`=122376961) # https://wsac.wa.gov/sites/default/files/2020-21.StateNeedBasedTotals.Sector.pdf
-PP <- PP %>% add_row(`State`="TN", `Program`="Tennessee Promise & Reconnect", `Participants`=17112, `Dollars`=NA) # https://www.tn.gov/content/tn/thec/research/tn-promise-annual-report.html
-PP <- PP %>% add_row(`State`="MO", `Program`="Missouri A+ Scholarship", `Participants`=14610, `Dollars`=48828874) # Email correspondence
-PP <- PP %>% add_row(`State`="OR", `Program`="Oregon Promise", `Participants`=11623, `Dollars`=19932080) # https://www.oregon.gov/highered/research/Documents/Reports/2022-SB81-Oregon-Promise.pdf
-PP <- PP %>% add_row(`State`="RI", `Program`="Rhode Island's Promise", `Participants`=1627, `Dollars`=7030366) # https://riopc.edu/wp-content/uploads/2023/01/RI_State_of_State_03182022.pdf
-PP <- PP %>% add_row(`State`="MI", `Program`="Michigan Reconnect", `Participants`=17085, `Dollars`=14166236) # https://www.michigan.gov/leo/-/media/Project/Websites/leo/Documents/Public-Information/Legislative-Reports/60by30/FY2021/Michigan-Reconnect-Annual-Report-FY21.pdf?rev=cb1466d764194d6a9200aca723602734&hash=8A8194A6DD090761024FE82F0F2AE37E
-PP <- PP %>% add_row(`State`="NJ", `Program`="NJ Community College Opportunity Grant", `Participants`=12855, `Dollars`=26412180) # https://www.state.nj.us/highereducation/IP/index.shtml
-PP <- PP %>% add_row(`State`="HI", `Program`="Hawai'i Promise", `Participants`=1800, `Dollars`=2932719) # https://www.hawaii.edu/govrel/docs/reports/2022/hrs304a-2102_act61-slh2019_2022_hawaii-promise_annual-report_508.pdf
-PP <- PP %>% add_row(`State`="WV", `Program`="WV Invests Grant", `Participants`=1360, `Dollars`=3929899) # https://www.wvhepc.edu/wp-content/uploads/2022/01/FA-Comprehensive-Report_2021_01Nov2021_LowRes.pdf
-PP <- PP %>% add_row(`State`="OK", `Program`="Oklahoma's Promise", `Participants`=3874, `Dollars`=10310609) # https://www.okhighered.org/okpromise/pdf/okp-report-20-21.pdf
-PP <- PP %>% add_row(`State`="KY", `Program`="Work Ready Kentucky Scholarship", `Participants`=3447, `Dollars`=9257247) # https://www.kheaa.com/pdf/FY2021WRKSAnnualReport.pdf
-PP <- PP %>% add_row(`State`="NM", `Program`="New Mexico Opportunity Grant", `Participants`=3011, `Dollars`=3869504) # https://hed.nm.gov/uploads/documents/Opportunity_Scholarship_Report_FY21_FINAL_2022.07.05_%281%29_.pdf
-PP <- PP %>% add_row(`State`="NV", `Program`="Nevada Promise", `Participants`=1395, `Dollars`=2794157) # https://nshe.nevada.edu/wp-content/uploads/Academic-Affairs/2021%20NPS%20Report%20Final%20-%2020210726.pdf
-PP <- PP %>% add_row(`State`="MD", `Program`="Maryland Community College Promise", `Participants`=2025, `Dollars`=6301319) # https://mhec.maryland.gov/publications/Documents/Research/AnnualPublications/2022DataBook_replaced_with_correction_Jan2023.pdf
-PP <- PP %>% add_row(`State`="AR", `Program`="Arkansas Future Grant", `Participants`=604, `Dollars`=2084297) # https://www.nassgapsurvey.com/survey/program_finder/program_finder.asp
-PP <- PP %>% add_row(`State`="IN", `Program`="Workforce Ready Grant", `Participants`=NA, `Dollars`=NA) # Reports not sufficient
-PP <- PP %>% add_row(`State`="IN", `Program`="21st Century Scholars", `Participants`=NA, `Dollars`=NA) # Reports not sufficient
-PP <- PP %>% add_row(`State`="NY", `Program`="Excelsior Scholarship", `Participants`=NA, `Dollars`=NA) # Reports not sufficient
-PP <- PP %>% add_row(`State`="DE", `Program`="Student Excellence Equals Degree (SEED)", `Participants`=NA, `Dollars`=NA) # Reports not found 
-PP <- PP %>% add_row(`State`="CT", `Program`="PACT Scholarship", `Participants`=NA, `Dollars`=NA) # Reports not found 
+#### State-level participation rates ####
+
+# AR
+participationAR <- sum(
+  467,
+  564,
+  543,
+  604
+) / sum(
+  44800,
+  43563,
+  43189,
+  38859
+)
+
+# CA
+participationCA <- sum(
+  973748,
+  945168,	
+  920426,	
+  800122
+) / sum(
+  1894238,
+  1901709,
+  1879074,
+  1735712
+)
+
+# HI
+participationHI <- sum(
+  1443,
+  1378,
+  1711,
+  1800
+) / sum(
+  22053,
+  21487,
+  21965,
+  21175
+)
+
+# KY
+participationKY <- sum(
+  3063,
+  3033
+) / sum(
+  66763,
+  60831
+)
+
+# MD
+participationMD <- sum(
+  966,
+  2025
+) / sum(
+  126654,
+  119789
+)
+
+# MI
+participationMI <- 17085 / 170615
+
+# MO
+participationMO <- sum(
+  12865,
+  13039,
+  13493,
+  14809
+) / sum(
+  95557,
+  91678,
+  87321,
+  80436
+)
+
+# NV
+participationNV <- sum(
+  812,
+  1130,
+  1395
+) / sum(
+  59358,
+  57236,
+  53075
+)
+
+# NJ
+participationNJ <- sum(
+  10313,
+  12855
+) / sum(
+  151683,
+  134115
+)
+
+# NM
+participationNM <- 3011 / 59128
+
+# OK
+participationOK <- sum(
+  5381,
+  4622,
+  4607,
+  4307
+) / sum(
+  66737,
+  64943,
+  61845,
+  59706
+)
+
+# OR
+participationOR <- sum(
+  9457,
+  10529,
+  11625,
+  8949
+) / sum(
+  111739,
+  108029,
+  98238,
+  89661
+)
+
+# RI
+participationRI <- sum(
+  1567,
+  1627
+) / sum(
+  17437,
+  15902
+)
+
+# TN
+participationTN <- 42870 / 85157
+
+# WA
+participationWA <- 55203 / 112610
+
+# WV
+participationWV <- sum(
+  1168,
+  1431
+) / sum(
+  15628,
+  13331
+)
+
+participation <- data.frame("State" = c(
+  "AR", 
+  "CA", 
+  "HI", 
+  "KY", 
+  "MD", 
+  "MI", 
+  "MO",
+  "NV", 
+  "NJ", 
+  "NM",
+  "OK", 
+  "OR", 
+  "RI", 
+  "TN", 
+  "WA", 
+  "WV"
+), "ParticipationRate"=c(
+  participationAR, 
+  participationCA, 
+  participationHI, 
+  participationKY, 
+  participationMD, 
+  participationMI, 
+  participationMO,
+  participationNV, 
+  participationNJ, 
+  participationNM,
+  participationOK, 
+  participationOR, 
+  participationRI, 
+  participationTN, 
+  participationWA, 
+  participationWV
+))
+
+participation$ParticipationRateShort <- percent(participation$ParticipationRate, accuracy=0.1)
+
 #### End #### 
 
-#### Merge data #### 
-PP <- left_join(x=PP, y=enrollmentSums, by="State")
-PP <- PP %>% mutate(`Percent` = `Participants` / `Total community college enrollment`)
+#### Calculating the aggregate participation rate #### 
+sum(
+  # Numerators: 
+  604,    # AR num
+  800122, # CA num
+  1800,   # HI num
+  3033,   # KY num
+  2025,   # MD num
+  17085,  # MI num 
+  14809,  # MO num 
+  1395,   # NV num
+  12855,  # NJ num
+  3011,   # NM num 
+  4307,   # OK num
+  8949,   # OR num
+  1627,   # RI num
+  42870,  # TN num 
+  55203,  # WA num
+  1431    # WV num
+) / sum(
+  
+  # Denominators
+  38859,   # AR den
+  1735712, # CA den
+  21175,   # HI den
+  60831,   # KY den
+  119789,  # MD den
+  170615,  # MI den
+  80436,   # MO den
+  53075,   # NV den
+  134115,  # NJ den
+  59128,   # NM den
+  59706,   # OK den
+  89661,   # OR den
+  15902,   # RI den
+  85157,   # TN den
+  112610,  # WA den
+  13331    # WV den
+)
 
-# PP2 <- PP %>% filter(is.na(`Participants`)==FALSE)
-# sum(PP2$`Participants`) / sum(PP2$`Total community college enrollment`)
+# If california is removed ... 
+sum(
+  # Numerators: 
+  604,    # AR num
+  1800,   # HI num
+  3033,   # KY num
+  2025,   # MD num
+  17085,  # MI num 
+  14809,  # MO num 
+  1395,   # NV num
+  12855,  # NJ num
+  3011,   # NM num 
+  4307,   # OK num
+  8949,   # OR num
+  1627,   # RI num
+  42870,  # TN num 
+  55203,  # WA num
+  1431    # WV num
+) / sum(
+  
+  # Denominators
+  38859,   # AR den
+  21175,   # HI den
+  60831,   # KY den
+  119789,  # MD den
+  170615,  # MI den
+  80436,   # MO den
+  53075,   # NV den
+  134115,  # NJ den
+  59128,   # NM den
+  59706,   # OK den
+  89661,   # OR den
+  15902,   # RI den
+  85157,   # TN den
+  112610,  # WA den
+  13331    # WV den
+)
 
-# Tennessee Reconnect imputation: 
-PP$`Percent`[PP$State=="TN"] <- PP$`Percent`[PP$State=="TN"] * 1.344753313 # Datalab table number 'gyozip'
 #### End #### 
 
-#### Create Figure 1 #### 
-participants <- PP %>% arrange(desc(`Percent`)) %>% filter(is.na(`Participants`)==FALSE)
+#### Average annual spending ####
+avgAR <- mean(c(
+  501794,
+  1165626,
+  1589304,
+  1975052
+))
+avgCA <- mean(c(
+  764271303,
+  757296824,
+  723007790,
+  654267518
+))
+avgHI <- mean(c(
+  1730774,
+  1640463,
+  2400496,
+  2932719
+))
+avgKY <- mean(c(
+  7645397,
+  7979655
+))
+avgMD <- mean(c(
+  3090362,
+  6301319
+))
+avgMI <- 14166236
+avgMO <- mean(c(
+  36326413,
+  38956869,
+  42873454,
+  50040693
+))
+avgNV <- mean(c(
+  1756610,
+  2386065, 
+  2794157
+))
+avgNJ <- mean(c(
+  19448999,
+  26412180
+))
+avgNM <- 2272050
+avgOK <- mean(c(
+  22382000,
+  19836000,
+  20040000,
+  18618000
+))
+avgOR <- mean(c(
+  14525158,
+  17594633,
+  19932280,
+  14650507
+))
+avgRI <- mean(c(
+  6814513,
+  7030366
+))
+avgTN <- 64434242
+avgWA <- 125533548
+avgWV <- mean(c(
+  3269353,
+  4139513
+))
 
-statecols <- c('#855C75', '#D9AF6B', '#AF6458', '#736F4C', '#526A83', '#625377', '#68855C')
-statecols <- c(statecols, statecols, statecols)
+averageFunding <- data.frame("State" = c(
+  "AR", 
+  "CA", 
+  "HI", 
+  "KY", 
+  "MD", 
+  "MI", 
+  "MO",
+  "NV", 
+  "NJ", 
+  "NM",
+  "OK", 
+  "OR", 
+  "RI", 
+  "TN", 
+  "WA", 
+  "WV"
+), "AnnualSpending"=c(
+  avgAR, 
+  avgCA, 
+  avgHI, 
+  avgKY, 
+  avgMD, 
+  avgMI, 
+  avgMO,
+  avgNV, 
+  avgNJ, 
+  avgNM,
+  avgOK, 
+  avgOR, 
+  avgRI, 
+  avgTN, 
+  avgWA, 
+  avgWV
+))
 
-ggplot(data=participants, mapping=aes(x=`Percent`, y=reorder(`Program`, `Percent`), fill=`State`)) + geom_bar(stat="identity") + scale_x_continuous(labels=scales::percent_format(accuracy=1)) + labs(x="Share of Community College Students Receiving State Promise Grant", y="") + scale_fill_manual(values=statecols) + theme(legend.position = "none")
+averageFunding$AnnualSpendingFormatted <- dollar(averageFunding$AnnualSpending, accuracy=1)
 #### End #### 
 
-#### Create Figure 2 ####
-AGI <- read.csv("PowerStats_ppliwd.csv", skip=11, header=FALSE, nrow=7) %>% select(V1, V2)
-AGI.tuition <- read.csv("PowerStats_ppliwd.csv", skip=9, header=FALSE, nrow=1) %>% select(V3)
+#### Figure 1 #### 
+participants <- participation %>% arrange(desc(`ParticipationRate`)) 
+
+statecols <- rep(c('#855C75', '#D9AF6B', '#AF6458', '#736F4C', '#526A83', '#625377', '#68855C'), 3)
+
+participants$`Program` <- rep(NA, nrow(participants))
+participants$`Program`[participants$`State`=="AR"] <- "Arkansas Future Grant"
+participants$`Program`[participants$`State`=="CA"] <- "CA College Promise Program & Promise Grant"
+participants$`Program`[participants$`State`=="HI"] <- "Hawai'i Promise"
+participants$`Program`[participants$`State`=="KY"] <- "Work Ready Kentucky Scholarship"
+participants$`Program`[participants$`State`=="MD"] <- "Maryland Community College Promise"
+participants$`Program`[participants$`State`=="MI"] <- "Michigan Reconnect"
+participants$`Program`[participants$`State`=="MO"] <- "Missouri A+ Scholarship"
+participants$`Program`[participants$`State`=="NV"] <- "Nevada Promise"
+participants$`Program`[participants$`State`=="NJ"] <- "NJ Community College Opportunity Grant"
+participants$`Program`[participants$`State`=="NM"] <- "New Mexico Opportunity Grant"
+participants$`Program`[participants$`State`=="OK"] <- "Oklahoma's Promise"
+participants$`Program`[participants$`State`=="OR"] <- "Oregon Promise"
+participants$`Program`[participants$`State`=="RI"] <- "Rhode Island Promise"
+participants$`Program`[participants$`State`=="TN"] <- "Tennessee Promise & Reconnect"
+participants$`Program`[participants$`State`=="WA"] <- "WA College Grant & College Bound"
+participants$`Program`[participants$`State`=="WV"] <- "West Virginia Invests Grant"
+
+ggplot(data=participants, mapping=aes(x=`ParticipationRate`, y=reorder(`Program`, `ParticipationRate`), fill=`State`)) + geom_bar(stat="identity") + scale_x_continuous(labels=scales::percent_format(accuracy=1)) + labs(x="Share of Community College Students Receiving State Promise Grant", y="") + scale_fill_manual(values=statecols) + theme(legend.position = "none")
+#### End #### 
+
+#### AGI data ####
+AGI <- read.csv("PowerStats_lctycr.csv", skip=11, header=FALSE, nrow=7) %>% select(V1, V2)
+AGI.tuition <- read.csv("PowerStats_lctycr.csv", skip=9, header=FALSE, nrow=1) %>% select(V3)
 AGI.tuition.value <- AGI.tuition$V3[1]
 AGI$V2 <- gsub("!", "", AGI$V2)
 AGI$V2 <- gsub(" ", "", AGI$V2)
@@ -107,7 +538,7 @@ AGI$V2[is.na(AGI$V2)] <- 0
 names(AGI) <- c("AGI Group1", "Pell Grant")
 
 income <- data.frame("AGI Group1"=c(
-  "X <= 15000", 
+  "0 <= X <= 15000", 
   "15001 <= X <= 30000", 
   "30001 <= X <= 45000",
   "45001 <= X <= 60000", 
@@ -133,22 +564,32 @@ AGI <- AGI %>% mutate(`First-Dollar Promise` = AGI.tuition.value)
 AGI <- reshape2::melt(data=AGI, id.vars=c("AGI Group"))
 names(AGI) <- c("AGI Group", "Type", "Amount")
 
+# Inflation adjustment 
+# January 2020 to July 2023 
+# Adjustment factor: 1.1849820
+
+AGI$Amount <- AGI$Amount * 1.1849820
+AGI.tuition.value <- AGI.tuition.value * 1.1849820
+#### End #### 
+
+#### Figure 2 #### 
 statecols2A <- c('#D9AF6B', '#526A83')
 
 AGI1 <- AGI %>% filter(`Type` %in% c("Pell Grant", "Last-Dollar Promise"))
 AGI1$Type <- factor(AGI1$Type, levels=c("Last-Dollar Promise", "Pell Grant"))
-ggplot(data=AGI1, mapping=aes(x=`AGI Group`, y=`Amount`, fill=`Type`)) + geom_bar(stat="identity", position="stack") + geom_hline(yintercept=AGI.tuition.value, linetype="dashed") + geom_text(x=6.5, y=3300, label="Dashed line indicates average tuition", color='gray45', size=2.8) + scale_fill_manual(values=statecols2A) + scale_y_continuous(labels=scales::dollar_format(accuracy=1), limits=c(0, 7000)) + theme(legend.title=element_blank())
+ggplot(data=AGI1, mapping=aes(x=`AGI Group`, y=`Amount`, fill=`Type`)) + geom_bar(stat="identity", position="stack") + geom_hline(yintercept=AGI.tuition.value, linetype="dashed") + geom_text(x=6.5, y=4500, label="Dashed line indicates average tuition", color='gray45', size=2.8) + scale_fill_manual(values=statecols2A) + scale_y_continuous(labels=scales::dollar_format(accuracy=1), limits=c(0, 9200)) + theme(legend.title=element_blank())
+#### End #### 
 
+#### Figure 3 ####
 statecols2B <- c('#526A83', 'lightsalmon3')
 
 AGI2 <- AGI %>% filter(`Type` %in% c("Pell Grant", "First-Dollar Promise"))
 AGI2$Type <- factor(AGI2$Type, levels=rev(c("First-Dollar Promise", "Pell Grant")))
-ggplot(data=AGI2, mapping=aes(x=`AGI Group`, y=`Amount`, fill=`Type`)) + geom_bar(stat="identity", position="stack") + geom_hline(yintercept=AGI.tuition.value, linetype="dashed") + geom_text(x=6.5, y=3300, label="Dashed line indicates average tuition", color='gray45', size=2.8) + scale_fill_manual(values=statecols2B) + scale_y_continuous(labels=scales::dollar_format(accuracy=1), limits=c(0, 7000)) + theme(legend.title=element_blank())
-
+ggplot(data=AGI2, mapping=aes(x=`AGI Group`, y=`Amount`, fill=`Type`)) + geom_bar(stat="identity", position="stack") + geom_hline(yintercept=AGI.tuition.value, linetype="dashed") + geom_text(x=6.5, y=4500, label="Dashed line indicates average tuition", color='gray45', size=2.8) + scale_fill_manual(values=statecols2B) + scale_y_continuous(labels=scales::dollar_format(accuracy=1), limits=c(0, 9200)) + theme(legend.title=element_blank())
 #### End #### 
 
-#### Create Figures 4, 5, 6 #### 
-npsas <- read.csv("Promise Data 07172023.csv", header=TRUE)
+#### Figure 4 #### 
+npsas <- read.csv("NPSAS ACP Total Grants.csv", header=TRUE)
 
 # Aggregate the increase in Figure 4 
 total4 <- sum(npsas$Value[(npsas$Group=="All promise-eligible students") & (npsas$Measure=="Estimated number of students")])
@@ -170,7 +611,7 @@ fig4 <- rbind(fig4, agg4C)
 
 fig4$`Measure` <- as.factor(fig4$`Measure`)
 fig4$`Measure` <- factor(fig4$`Measure`, levels=c("Estimated number of students", "Total grants under state promise", "Total grants under ACP", "Total grants under ACP if promise program converted to stipends"))
-ggplot(data=fig4, mapping=aes(x=`Program`, y=`Value`, fill=`Measure`)) + geom_bar(stat="identity", width=0.6, position=position_dodge(0.7)) + theme(legend.position='bottom') + scale_fill_manual(values=statecols[7:9]) + scale_y_continuous(limits=c(0, 12000), labels=scales::dollar_format(accuracy=1)) + labs(y="", fill="")
+ggplot(data=fig4, mapping=aes(x=`Program`, y=`Value`, fill=`Measure`)) + geom_bar(stat="identity", width=0.6, position=position_dodge(0.7)) + theme(legend.position='bottom') + scale_fill_manual(values=statecols[7:9]) + scale_y_continuous(limits=c(0, 15000), labels=scales::dollar_format(accuracy=1)) + labs(y="", fill="")
 
 # Increases by state in Figure 4 
 fig4.MI <- fig4 %>% filter(Program=="MI Reconnect")
@@ -190,8 +631,9 @@ fig4.TN$Value[fig4.TN$Measure=="Total grants under ACP"] / fig4.TN$Value[fig4.TN
 
 fig4.AG$Value[fig4.AG$Measure=="Total grants under ACP"] / fig4.AG$Value[fig4.AG$Measure=="Total grants under state promise"]
 fig4.AG$Value[fig4.AG$Measure=="Total grants under ACP if promise program converted to stipends"] / fig4.AG$Value[fig4.AG$Measure=="Total grants under state promise"]
+#### End #### 
 
-# Aggregate the increase in Figure 5 
+#### Figure 5 #### 
 total5 <- sum(npsas$Value[(npsas$Group=="Promise-eligible, Pell recipient ") & (npsas$Measure=="Estimated number of students")])
 agg5A <- npsas %>% filter(Measure=="Estimated number of students") %>% filter(Group=="Promise-eligible, Pell recipient ")
 agg5A$`Share of total` <- agg5A$`Value` / total5
@@ -211,7 +653,7 @@ fig5 <- rbind(fig5, agg5C)
 
 fig5$`Measure` <- as.factor(fig5$`Measure`)
 fig5$`Measure` <- factor(fig5$`Measure`, levels=c("Estimated number of students", "Total grants under state promise", "Total grants under ACP", "Total grants under ACP if promise program converted to stipends"))
-ggplot(data=fig5, mapping=aes(x=`Program`, y=`Value`, fill=`Measure`)) + geom_bar(stat="identity", width=0.6, position=position_dodge(0.7)) + theme(legend.position='bottom') + scale_fill_manual(values=statecols[7:9]) + scale_y_continuous(limits=c(0, 12000), labels=scales::dollar_format(accuracy=1)) + labs(y="", fill="")
+ggplot(data=fig5, mapping=aes(x=`Program`, y=`Value`, fill=`Measure`)) + geom_bar(stat="identity", width=0.6, position=position_dodge(0.7)) + theme(legend.position='bottom') + scale_fill_manual(values=statecols[7:9]) + scale_y_continuous(limits=c(0, 15000), labels=scales::dollar_format(accuracy=1)) + labs(y="", fill="")
 
 # Increases by state in Figure 5 
 fig5.MI <- fig5 %>% filter(Program=="MI Reconnect")
@@ -234,8 +676,8 @@ fig5.AG$Value[fig5.AG$Measure=="Total grants under ACP if promise program conver
 
 #### End #### 
 
-#### Create Figures 6 and 7 #### 
-npsas2 <- read.csv("Promise Data 07172023-2.csv", header=TRUE)
+#### Figure 6 #### 
+npsas2 <- read.csv("NPSAS ACP Total Nontuition.csv", header=TRUE)
 
 # Aggregate the increase in Figure 6 
 total6 <- sum(npsas2$Value[(npsas2$Group=="All promise-eligible students") & (npsas2$Measure=="Estimated number of students")])
@@ -257,7 +699,7 @@ fig6 <- rbind(fig6, agg6C)
 
 fig6$`Measure` <- as.factor(fig6$`Measure`)
 fig6$`Measure` <- factor(fig6$`Measure`, levels=c("Non-tuition grants under state promise", "Non-tuition grants under ACP", "Non-tuition grants under ACP if state promise converted to stipends"))
-ggplot(data=fig6, mapping=aes(x=`Program`, y=`Value`, fill=`Measure`)) + geom_bar(stat="identity", width=0.6, position=position_dodge(0.7)) + theme(legend.position='bottom') + scale_fill_manual(values=statecols[10:12]) + scale_y_continuous(limits=c(0, 6500), labels=scales::dollar_format(accuracy=1)) + labs(y="", fill="")
+ggplot(data=fig6, mapping=aes(x=`Program`, y=`Value`, fill=`Measure`)) + geom_bar(stat="identity", width=0.6, position=position_dodge(0.7)) + theme(legend.position='bottom') + scale_fill_manual(values=statecols[10:12]) + scale_y_continuous(limits=c(0, 8000), labels=scales::dollar_format(accuracy=1)) + labs(y="", fill="")
 
 # Increases by state in Figure 6 
 fig6.MI <- fig6 %>% filter(Program=="MI Reconnect")
@@ -271,8 +713,9 @@ fig6.NV$Value[fig6.NV$Measure=="Non-tuition grants under ACP"] / fig6.NV$Value[f
 
 fig6.AG$Value[fig6.AG$Measure=="Non-tuition grants under ACP"] / fig6.AG$Value[fig6.AG$Measure=="Non-tuition grants under state promise"]
 fig6.AG$Value[fig6.AG$Measure=="Non-tuition grants under ACP if promise program converted to stipends"] / fig6.AG$Value[fig6.AG$Measure=="Non-tuition grants under state promise"]
+#### End #### 
 
-
+#### Figure 7 #### 
 # Aggregate the increase in Figure 7 
 total7 <- sum(npsas2$Value[(npsas2$Group=="Promise-eligible, Pell recipient ") & (npsas2$Measure=="Estimated number of students")])
 agg7A <- npsas2 %>% filter(Measure=="Estimated number of students") %>% filter(Group=="Promise-eligible, Pell recipient ")
@@ -287,15 +730,13 @@ agg7C$`Program` <- rep("Aggregated", nrow(agg7C))
 agg7C$`Group` <- rep("Promise-eligible, Pell recipient ", nrow(agg7C))
 agg7C <- agg7C %>% select(`Program`, `Measure`, `Group`, `Value`)
 
-
 # Figure 7: Promise-eligible, Pell recipient 
 fig7 <- npsas2 %>% filter(`Group` == "Promise-eligible, Pell recipient ") %>% filter(`Measure` != "Estimated number of students")
 fig7 <- rbind(fig7, agg7C)
 
 fig7$`Measure` <- as.factor(fig7$`Measure`)
 fig7$`Measure` <- factor(fig7$`Measure`, levels=c("Non-tuition grants under state promise", "Non-tuition grants under ACP", "Non-tuition grants under ACP if state promise converted to stipends"))
-ggplot(data=fig7, mapping=aes(x=`Program`, y=`Value`, fill=`Measure`)) + geom_bar(stat="identity", width=0.6, position=position_dodge(0.7)) + theme(legend.position='bottom') + scale_fill_manual(values=statecols[10:12]) + scale_y_continuous(limits=c(0, 6500), labels=scales::dollar_format(accuracy=1)) + labs(y="", fill="")
-
+ggplot(data=fig7, mapping=aes(x=`Program`, y=`Value`, fill=`Measure`)) + geom_bar(stat="identity", width=0.6, position=position_dodge(0.7)) + theme(legend.position='bottom') + scale_fill_manual(values=statecols[10:12]) + scale_y_continuous(limits=c(0, 8000), labels=scales::dollar_format(accuracy=1)) + labs(y="", fill="")
 
 # Increases by state in Figure 7 
 fig7.MI <- fig7 %>% filter(Program=="MI Reconnect")
@@ -312,7 +753,7 @@ fig7.AG$Value[fig7.AG$Measure=="Non-tuition grants under ACP if promise program 
 
 #### End #### 
 
-#### Create Figures 8 and 9 #### 
+#### Figure 8 #### 
 statecols2C <- c('lightsteelblue3', '#526A83', 'lightsalmon3')
 
 AGI2$Type <- factor(AGI2$Type, levels=rev(c("First-Dollar Promise", "America's College Promise", "Pell Grant")))
@@ -322,28 +763,30 @@ AGI4 <- AGI2
 AGI3$Type[AGI3$Type=="First-Dollar Promise"] <- "America's College Promise"
 AGI4$Type[AGI4$Type=="First-Dollar Promise"] <- "America's College Promise"
 
-AGI3 <- AGI3 %>% add_row(`AGI Group` = "$0 to $15K", `Type` = "Converted State Promise", `Amount` = 2800)
-AGI3 <- AGI3 %>% add_row(`AGI Group` = "$15K to $30K", `Type` = "Converted State Promise", `Amount` = 2600)
-AGI3 <- AGI3 %>% add_row(`AGI Group` = "$30K to $45K", `Type` = "Converted State Promise", `Amount` = 2400)
-AGI3 <- AGI3 %>% add_row(`AGI Group` = "$45K to $60K", `Type` = "Converted State Promise", `Amount` = 1400)
-AGI3 <- AGI3 %>% add_row(`AGI Group` = "$60K to $90K", `Type` = "Converted State Promise", `Amount` = 400)
-AGI3 <- AGI3 %>% add_row(`AGI Group` = "$90K to $120K", `Type` = "Converted State Promise", `Amount` = 0)
+AGI3 <- AGI3 %>% add_row(`AGI Group` = "$0 to $15K", `Type` = "Converted State Promise", `Amount` = (4525 * 0.6))
+AGI3 <- AGI3 %>% add_row(`AGI Group` = "$15K to $30K", `Type` = "Converted State Promise", `Amount` = (4005 * 0.6))
+AGI3 <- AGI3 %>% add_row(`AGI Group` = "$30K to $45K", `Type` = "Converted State Promise", `Amount` = (3716 * 0.6))
+AGI3 <- AGI3 %>% add_row(`AGI Group` = "$45K to $60K", `Type` = "Converted State Promise", `Amount` = (2426 * 0.6))
+AGI3 <- AGI3 %>% add_row(`AGI Group` = "$60K to $90K", `Type` = "Converted State Promise", `Amount` = (793 * 0.6))
+AGI3 <- AGI3 %>% add_row(`AGI Group` = "$90K to $120K", `Type` = "Converted State Promise", `Amount` = (72 * 0.6))
 AGI3 <- AGI3 %>% add_row(`AGI Group` = "More than $120K", `Type` = "Converted State Promise", `Amount` = 0)
 
 AGI3$Type <- factor(AGI3$Type, levels=rev(c("America's College Promise", "Pell Grant", "Converted State Promise")))
-ggplot(data=AGI3, mapping=aes(x=`AGI Group`, y=`Amount`, fill=`Type`)) + geom_bar(stat="identity", position="stack") + geom_hline(yintercept=AGI.tuition.value, linetype="dashed") + scale_fill_manual(values=statecols2C) + scale_y_continuous(labels=scales::dollar_format(accuracy=1), limits=c(0, 11000)) + theme(legend.title=element_blank())
+ggplot(data=AGI3, mapping=aes(x=`AGI Group`, y=`Amount`, fill=`Type`)) + geom_bar(stat="identity", position="stack") + geom_hline(yintercept=AGI.tuition.value, linetype="dashed") + scale_fill_manual(values=statecols2C) + scale_y_continuous(labels=scales::dollar_format(accuracy=1), limits=c(0, 12400)) + theme(legend.title=element_blank())
 # + geom_text(x=6.5, y=3300, label="Dashed line indicates average tuition", color='gray45', size=2.8)
+#### End #### 
 
+#### Figure 9 #### 
 AGI4 <- AGI4 %>% add_row(`AGI Group` = "$0 to $15K", `Type` = "Converted State Promise", `Amount` = 0)
 AGI4 <- AGI4 %>% add_row(`AGI Group` = "$15K to $30K", `Type` = "Converted State Promise", `Amount` = 0)
-AGI4 <- AGI4 %>% add_row(`AGI Group` = "$30K to $45K", `Type` = "Converted State Promise", `Amount` = (3000 - 2931.54))
-AGI4 <- AGI4 %>% add_row(`AGI Group` = "$45K to $60K", `Type` = "Converted State Promise", `Amount` = (3000 - 1832.10))
-AGI4 <- AGI4 %>% add_row(`AGI Group` = "$60K to $90K", `Type` = "Converted State Promise", `Amount` = (3000 - 481.94))
-AGI4 <- AGI4 %>% add_row(`AGI Group` = "$90K to $120K", `Type` = "Converted State Promise", `Amount` = (3000 - 7.04))
+AGI4 <- AGI4 %>% add_row(`AGI Group` = "$30K to $45K", `Type` = "Converted State Promise", `Amount` = 0)
+AGI4 <- AGI4 %>% add_row(`AGI Group` = "$45K to $60K", `Type` = "Converted State Promise", `Amount` = (3000 - 2426))
+AGI4 <- AGI4 %>% add_row(`AGI Group` = "$60K to $90K", `Type` = "Converted State Promise", `Amount` = (3000 - 793))
+AGI4 <- AGI4 %>% add_row(`AGI Group` = "$90K to $120K", `Type` = "Converted State Promise", `Amount` = (3000 - 72))
 AGI4 <- AGI4 %>% add_row(`AGI Group` = "More than $120K", `Type` = "Converted State Promise", `Amount` = 3000)
 
 AGI4$Type <- factor(AGI4$Type, levels=rev(c("America's College Promise", "Pell Grant", "Converted State Promise")))
-ggplot(data=AGI4, mapping=aes(x=`AGI Group`, y=`Amount`, fill=`Type`)) + geom_bar(stat="identity", position="stack") + geom_hline(yintercept=AGI.tuition.value, linetype="dashed") + geom_hline(yintercept=AGI.tuition.value + 3000, linetype="dotted") + geom_text(x=6.34, y=6300, label="Dotted line indicates non-tuition guarantee", color='gray45', size=2.8) + scale_fill_manual(values=statecols2C) + scale_y_continuous(labels=scales::dollar_format(accuracy=1), limits=c(0, 11000)) + theme(legend.title=element_blank())
+ggplot(data=AGI4, mapping=aes(x=`AGI Group`, y=`Amount`, fill=`Type`)) + geom_bar(stat="identity", position="stack") + geom_hline(yintercept=AGI.tuition.value, linetype="dashed") + geom_hline(yintercept=AGI.tuition.value + 3000, linetype="dotted") + geom_text(x=6.04, y=7600, label="Dotted line indicates $3,000 living stipend guarantee", color='gray45', size=2.8) + scale_fill_manual(values=statecols2C) + scale_y_continuous(labels=scales::dollar_format(accuracy=1), limits=c(0, 12400)) + theme(legend.title=element_blank())
 #### End #### 
 
 #### Create Fed-state model: Part 1 #### 
@@ -782,7 +1225,42 @@ stateModel <- aggregate(data=fullStateData, cbind(
 
 #### End #### 
 
-#### Load in promise program data to fed-state model, make calculations #### 
+#### Figure 10 ####
+stateModel0 <- stateModel %>% select(`STABBR2`, `Partnership cost`) %>% rename(`State` = `STABBR2`)
+
+fig10 <- left_join(x=averageFunding, y=stateModel0, by="State")
+
+fig10 <- fig10 %>% select(`State`, `AnnualSpending`, `Partnership cost`)
+
+fig10 <- fig10 %>% rename(`State Promise` = `AnnualSpending`) %>% rename(`America's College Promise` = `Partnership cost`)
+  
+fig10 <- fig10 %>% pivot_longer(cols=c(`State Promise`, `America's College Promise`))
+
+fig10$`State2` <- rep(NA, nrow(fig10))
+fig10$`State2`[fig10$`State`=="CA"] <- "California"
+fig10$`State2`[fig10$`State`=="WA"] <- "Washington"
+fig10$`State2`[fig10$`State`=="NJ"] <- "New Jersey"
+fig10$`State2`[fig10$`State`=="MI"] <- "Michigan"
+fig10$`State2`[fig10$`State`=="MD"] <- "Maryland"
+fig10$`State2`[fig10$`State`=="MO"] <- "Missouri"
+fig10$`State2`[fig10$`State`=="OR"] <- "Oregon"
+fig10$`State2`[fig10$`State`=="TN"] <- "Tennessee"
+fig10$`State2`[is.na(fig10$`State2`)] <- "Other states"
+
+fig10 <- aggregate(data=fig10, value ~ `State2` + name, FUN=sum)
+
+fig10$`State2` <- as.factor(fig10$`State2`)
+fig10$`State2` <- factor(fig10$`State2`, levels=c("California", "Maryland", "Michigan", "Missouri", "New Jersey", "Other states", "Oregon", "Tennessee", "Washington"))
+
+ggplot(data=fig10, mapping=aes(x=`name`, y=`value`, fill=`State2`)) + geom_bar(position="stack", stat="identity") + scale_fill_manual(values=statecols) + labs(x="Program", y="Annual Grants", fill="State") + scale_y_continuous(labels=dollar_format(accuracy=1))
+ggplot(data=fig10, mapping=aes(x=`name`, y=`value`, fill=`name`)) + geom_bar(position="stack", stat="identity") + scale_fill_manual(values=statecols) + labs(x="Program", y="Annual Grants", fill="State") + scale_y_continuous(labels=dollar_format(accuracy=1)) + theme(legend.position = "none")
+
+# Stats: 
+aggregate(data=fig10, value ~ name, FUN=sum)
+
+#### End #### 
+
+#### Table 1 #### 
 promiseCosts <- data.frame("STABBR2" = c("CA"), 
                            "Promise Program Cost" = c(654267518))
 names(promiseCosts) <- c("STABBR2", "Promise Program Cost")
@@ -815,4 +1293,3 @@ promiseAnalysis2$`Leftover` <- dollar(round(promiseAnalysis2$`Leftover`, -5))
 promiseAnalysis2$`Promise Program Cost` <- dollar(round(promiseAnalysis2$`Promise Program Cost`, -5))
 
 #### End #### 
-

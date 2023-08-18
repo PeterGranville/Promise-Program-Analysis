@@ -1,0 +1,37 @@
+﻿Program,Measure,Group,Value
+MI Reconnect,Estimated number of students,All promise-eligible students,34699
+MI Reconnect,Non-tuition grants under state promise,All promise-eligible students,656
+MI Reconnect,Non-tuition grants under ACP,All promise-eligible students,2513
+MI Reconnect,Non-tuition grants under ACP if state promise converted to stipends,All promise-eligible students,4175
+MI Reconnect,Estimated number of students,"Promise-eligible, Pell recipient ",20819
+MI Reconnect,Non-tuition grants under state promise,"Promise-eligible, Pell recipient ",1094
+MI Reconnect,Non-tuition grants under ACP,"Promise-eligible, Pell recipient ",4046
+MI Reconnect,Non-tuition grants under ACP if state promise converted to stipends,"Promise-eligible, Pell recipient ",4784
+MI Reconnect,Estimated number of students,"Promise-eligible, non-Pell",13880
+MI Reconnect,Non-tuition grants under state promise,"Promise-eligible, non-Pell",18
+MI Reconnect,Non-tuition grants under ACP,"Promise-eligible, non-Pell",311
+MI Reconnect,Non-tuition grants under ACP if state promise converted to stipends,"Promise-eligible, non-Pell",3293
+NV Promise,Estimated number of students,All promise-eligible students,8101
+NV Promise,Non-tuition grants under state promise,All promise-eligible students,2506
+NV Promise,Non-tuition grants under ACP,All promise-eligible students,3777
+NV Promise,Non-tuition grants under ACP if state promise converted to stipends,All promise-eligible students,4897
+NV Promise,Estimated number of students,"Promise-eligible, Pell recipient ",3492
+NV Promise,Non-tuition grants under state promise,"Promise-eligible, Pell recipient ",4719
+NV Promise,Non-tuition grants under ACP,"Promise-eligible, Pell recipient ",7703
+NV Promise,Non-tuition grants under ACP if state promise converted to stipends,"Promise-eligible, Pell recipient ",7715
+NV Promise,Estimated number of students,"Promise-eligible, non-Pell",4610
+NV Promise,Non-tuition grants under state promise,"Promise-eligible, non-Pell",0
+NV Promise,Non-tuition grants under ACP,"Promise-eligible, non-Pell",802
+NV Promise,Non-tuition grants under ACP if state promise converted to stipends,"Promise-eligible, non-Pell",2852
+NJ Opportunity,Estimated number of students,All promise-eligible students,71056
+NJ Opportunity,Non-tuition grants under state promise,All promise-eligible students,1380
+NJ Opportunity,Non-tuition grants under ACP,All promise-eligible students,4807
+NJ Opportunity,Non-tuition grants under ACP if state promise converted to stipends,All promise-eligible students,5809
+NJ Opportunity,Estimated number of students,"Promise-eligible, Pell recipient ",57413
+NJ Opportunity,Non-tuition grants under state promise,"Promise-eligible, Pell recipient ",1701
+NJ Opportunity,Non-tuition grants under ACP,"Promise-eligible, Pell recipient ",5880
+NJ Opportunity,Non-tuition grants under ACP if state promise converted to stipends,"Promise-eligible, Pell recipient ",6263
+NJ Opportunity,Estimated number of students,"Promise-eligible, non-Pell",13643
+NJ Opportunity,Non-tuition grants under state promise,"Promise-eligible, non-Pell",0
+NJ Opportunity,Non-tuition grants under ACP,"Promise-eligible, non-Pell",299
+NJ Opportunity,Non-tuition grants under ACP if state promise converted to stipends,"Promise-eligible, non-Pell",3932
